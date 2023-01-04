@@ -50,7 +50,6 @@ TIM_HandleTypeDef htim2;
 	volatile int position=1; //motor
 	volatile int cuenta=0;
 	volatile int aux=0;
-	volatile int accrebote=0;
 	volatile int botonautomatic=0;
 	__IO uint16_t luz=0;
 /* USER CODE END PV */
@@ -92,42 +91,38 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 }
 
-/*int antirebotes(volatile int* accrebote, GPIO_TypeDef* GPIO_Port, uint16_t GPIO_Number){
-	  int counter= HAL_GetTick();
-	  int buttoncount=0;
 
-	if (accrebote==1){
-		              if (HAL_GetTick()-counter>=20){
-		                  counter=HAL_GetTick();
-		                  if (HAL_GPIO_ReadPin (GPIO_Port, GPIO_Number)!=1){
-		                      buttoncount=0;
-		                  }
-		                  else{
-		                      buttoncount++;
-		                  }
-		              if (buttoncount==3){ //Periodo antirebotes
-		            	  buttoncount=0;
-		                  accion=1;
-		                  }
-		              }
+int antirrebotes(volatile int* button_int, GPIO_TypeDef* GPIO_Port, uint16_t GPIO_number){
 
-		 if (accrebote==2){
-		  if (HAL_GetTick()-counter>=20){
-		    counter=HAL_GetTick();
-		    if (HAL_GPIO_ReadPin(GPIO_Port, GPIO_Number)!=1){
-		     buttoncount=0;
+	uint8_t button_count=0;
+	int counter=0;
+	const uint8_t periodo_comprobacion=25; //ms
 
-		    }else{
-		      buttoncount++;
-		     }
-		  if (buttoncount==3){ //Periodo antirebotes
-		     buttoncount=0;
-		     accion=2;
-		 }
+	if (HAL_GPIO_ReadPin(GPIO_Port, GPIO_number)){
+		counter=HAL_GetTick();
+
+		while (button_count<4){
+			if ((HAL_GetTick()-counter) >= periodo_comprobacion){
+				if (HAL_GPIO_ReadPin(GPIO_Port, GPIO_number)!=1){
+					button_count=0;
+				}else{
+					button_count++;
+				}
+				if (button_count==4){
+					return 1;
+					button_count=0;
+				}
+			counter=HAL_GetTick();
+			}
 		}
-   }
 
-}*/
+	}
+	button_count=0;
+	return 0;
+
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -165,7 +160,6 @@ int main(void)
 
 
 
- // HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);//???????????????????????????????????????????
 
 
   /* USER CODE END 2 */
@@ -187,24 +181,26 @@ int main(void)
 	  if(HAL_ADC_PollForConversion(&hadc1,100000)==HAL_OK){
 		  luz=HAL_ADC_GetValue(&hadc1);
 	  }
-	  if(botonautomatic){
-		  if(luz>50) //persiana se sube
-			  accion=1;
+	  if (antirrebotes(&botonautomatic,GPIOA,GPIO_PIN_2)){
+		  if(botonautomatic){
+			  if(luz>1500) //persiana se sube
+				  accion=2;
 
-		  else
-			  accion=2;
+			  else
+				  accion=1;
 
+		  }
 	  }
 
 
-	  if(cuenta>500 && accion==1){
+	  if(cuenta>499 && accion==1){
 		  accion=0;
 		  estado=1; //persiana subida completamente
 
 	  }
 
 
-	  if(cuenta<0 && accion==2){
+	  if(cuenta<1 && accion==2){
 			  accion=0;
 			  estado=0; //persiana bajada completamente
 	  }
@@ -221,7 +217,7 @@ int main(void)
 		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 
 		  position++;
-		  HAL_Delay(20);
+		  HAL_Delay(10);
 
 		  if(position>4){
 			  position=1;
@@ -230,7 +226,7 @@ int main(void)
 
 		  setPosition(position);
 
-		  }while (cuenta<500 && (accion==1||aux==1)); //morgan
+		  }while (cuenta<499 && (accion==1||aux==1)); //morgan
 
 
 	  }
@@ -246,7 +242,7 @@ int main(void)
 
 
 		  position--;
-		  HAL_Delay(20);
+		  HAL_Delay(10);
 
 		  if(position<=1){
 		  	 	position=4;
@@ -255,7 +251,7 @@ int main(void)
 
 		  setPosition(position);
 
-		  } while (cuenta>0 && (accion==2||aux==2));
+		  } while (cuenta>1 && (accion==2||aux==2));
 	  }
 	  else{
 		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
@@ -434,15 +430,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pins : PA0 PA2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -463,6 +453,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
 }
 
