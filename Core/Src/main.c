@@ -67,7 +67,7 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN 0 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
-	if (GPIO_Pin==GPIO_PIN_0){		//pulsacion de boton
+	if (GPIO_Pin==GPIO_PIN_0){		//pulsacion de boton (manual)
 		if(accion==0){				//persiana parada
 			if(estado==0)			//persiana bajada
 				accion=1;			//subiendo
@@ -138,7 +138,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+                                  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -157,9 +157,6 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
-
-
-
 
 
   /* USER CODE END 2 */
@@ -181,7 +178,7 @@ int main(void)
 	  if(HAL_ADC_PollForConversion(&hadc1,100000)==HAL_OK){
 		  luz=HAL_ADC_GetValue(&hadc1);
 	  }
-	  if (antirrebotes(&botonautomatic,GPIOA,GPIO_PIN_2)){
+	  //if (antirrebotes(&botonautomatic,GPIOA,GPIO_PIN_2)){
 		  if(botonautomatic){
 			  if(luz>1500) //persiana se sube
 				  accion=2;
@@ -190,10 +187,10 @@ int main(void)
 				  accion=1;
 
 		  }
-	  }
+	 // }
 
 
-	  if(cuenta>499 && accion==1){
+	  if(cuenta>2499 && accion==1){
 		  accion=0;
 		  estado=1; //persiana subida completamente
 
@@ -217,7 +214,7 @@ int main(void)
 		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 
 		  position++;
-		  HAL_Delay(10);
+		  HAL_Delay(8);
 
 		  if(position>4){
 			  position=1;
@@ -226,7 +223,7 @@ int main(void)
 
 		  setPosition(position);
 
-		  }while (cuenta<499 && (accion==1||aux==1)); //morgan
+		  }while (cuenta<2499 && (accion==1||aux==1)); //morgan
 
 
 	  }
@@ -242,9 +239,9 @@ int main(void)
 
 
 		  position--;
-		  HAL_Delay(10);
+		  HAL_Delay(5);
 
-		  if(position<=1){
+		  if(position<1){
 		  	 	position=4;
 		  	  	cuenta--;
 		  }
@@ -462,15 +459,13 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	if(htim->Instance==TIM2){
+	if(htim->Instance==TIM2){ //cuando se ha superado el tiempo establecido
 
 		if(accion==1)
 			aux=1;
 
 		else if(accion==2)
 			aux=2;
-
-
 	}
 
 }
